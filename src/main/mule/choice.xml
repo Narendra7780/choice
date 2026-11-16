@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="9e52b9e1-ee12-466f-bc6e-e853c4303875" >
+		<http:request-connection host="training4-american-ws.cloudhub.io" port="80" />
+	</http:request-config>
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="805bdcb8-bd5a-41e2-9b70-e63d722d1668" >
+		<http:listener-connection host="localhost" port="8080" />
+	</http:listener-config>
+	<flow name="choiceFlow" doc:id="a0b08fa7-6dbc-4ad1-b311-f7e4cfec2895" >
+		<http:listener doc:name="Listener" doc:id="9918dadf-05a3-42ae-b160-bec50a2ef879" config-ref="HTTP_Listener_config" path="/choice"/>
+		<logger level="INFO" doc:name="Logger" doc:id="9da19481-df80-4f5c-8c72-0aac4cbd4064" message="start"/>
+		<http:request method="GET" doc:name="Request" doc:id="50c3ab17-5781-42a2-8e4c-dc8ad912ae90" config-ref="HTTP_Request_configuration" path="/api/flights">
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="d52a80d6-522a-4d57-9399-3496e5fc1b72">
+			<ee:message>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="Lowprice" ><![CDATA[[]]]></ee:set-variable>
+				<ee:set-variable variableName="Highprice" ><![CDATA[[]]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="31317b8d-8d88-49dd-b4f0-db4ca4262301" >
+			<choice doc:name="Choice" doc:id="a0f34e73-82be-4d99-9531-4dfe6ef9f21e">
+			<when expression="#[payload.price&gt;400]">
+				<ee:transform doc:name="Transform Message" doc:id="f82ae576-2f59-420b-817e-66037dd697e0">
+					<ee:message>
+					</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="Highprice" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.Highprice + payload]]></ee:set-variable>
+						</ee:variables>
+				</ee:transform>
+			</when>
+			<when expression="#[payload.price&lt;400]">
+				<ee:transform doc:name="Transform Message" doc:id="0caa6134-1d8c-49e0-9006-03a9cc38386b">
+					<ee:message>
+					</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="Lowprice" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.Lowprice + payload]]></ee:set-variable>
+						</ee:variables>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="ef6a110e-80e6-4864-83cf-88bdbc1e07ab">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message" : "no data available"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="49228547-997f-43da-bbd8-861aa79fc238" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"High price" : vars.Highprice,
+
+	"Low price" : vars.Lowprice 
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="0a5c0fa2-5ef2-4eff-a0de-2941f450e62c" message="end"/>
+	</flow>
+</mule>
